@@ -14,3 +14,10 @@
 # Other files
 *.log
 *.vsidx
+
+#Ignore localDB files
+*.mdf
+*.ldf
+
+#Ignore migrations data
+!Migrations/
