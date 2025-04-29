@@ -22,13 +22,12 @@ namespace api_backend.Controllers
             _context = context;
             _authService = authService;
         }
-        //	Skapar testdata: adress, kund, städare, roll, bokning. Endast Admin.
+
         [HttpGet]
         [Route("seed")]
         [ActionName("Seed testdata")]
         public IActionResult SeedTestData()
         {
-            // Endast admin kan köra seed
             if (!_authService.IsAdmin())
                 return Forbid("Endast administratörer kan köra seed-data");
 
@@ -37,7 +36,6 @@ namespace api_backend.Controllers
 
             try
             {
-                // 1. Skapa adress
                 var address = new CustomerAddressEntity
                 {
                     CustomerStreetName = "Testgatan 1",
@@ -47,7 +45,6 @@ namespace api_backend.Controllers
                 _context.CustomerAddresses.Add(address);
                 _context.SaveChanges();
 
-                // 2. Skapa kund
                 var customer = new CustomerEntity
                 {
                     CustomerFirstName = "Tina",
@@ -57,7 +54,6 @@ namespace api_backend.Controllers
                 _context.Customers.Add(customer);
                 _context.SaveChanges();
 
-                // 3. Skapa roll (om det inte redan finns)
                 var role = _context.Roles.FirstOrDefault(r => r.Role == "Cleaner");
                 if (role == null)
                 {
@@ -66,8 +62,7 @@ namespace api_backend.Controllers
                     _context.SaveChanges();
                 }
 
-                // 4. Skapa cleaner
-                var cleaner = new CleanerEntity
+                var cleaner = new EmployeeEntity
                 {
                     CleanerFirstName = "Anna",
                     CleanerLastName = "Städsson",
@@ -75,10 +70,9 @@ namespace api_backend.Controllers
                     CleanerPhone = "0701234567",
                     RoleId = role.Id
                 };
-                _context.Cleaners.Add(cleaner);
+                _context.Employees.Add(cleaner);
                 _context.SaveChanges();
 
-                // 5. Skapa bokning
                 var booking = new BookingEntity
                 {
                     Customer = customer,
@@ -88,7 +82,6 @@ namespace api_backend.Controllers
                 _context.Bookings.Add(booking);
                 _context.SaveChanges();
 
-                // 6. Skapa koppling mellan bokning och städare
                 var bookingCleaner = new BookingCleanerEntity
                 {
                     BookingId = booking.Id,
@@ -105,8 +98,6 @@ namespace api_backend.Controllers
             }
         }
 
-        // GET: api/BookingApi 	Hämtar alla bokningar: Admin ser alla bokningar + alla detaljer. Cleaner ser endast sina egna.
-
         [HttpGet]
         [ActionName("GetAllBookings")]
         [Route("")]
@@ -116,14 +107,12 @@ namespace api_backend.Controllers
             {
                 if (_authService.IsAdmin())
                 {
-                    // Admin får se alla bokningar med full information
                     var bookings = _context.Bookings
                         .Include(b => b.Customer)
                         .Include(b => b.BookingCleaners)
                             .ThenInclude(bc => bc.Cleaner)
                         .ToList();
 
-                    // Hämta också adressinformation för varje kund
                     var customerIds = bookings.Select(b => b.Customer.Id).ToList();
                     var addressInfo = _context.Customers
                         .Where(c => customerIds.Contains(c.Id))
@@ -133,7 +122,6 @@ namespace api_backend.Controllers
                             (c, a) => new { CustomerId = c.Id, Address = a })
                         .ToDictionary(x => x.CustomerId, x => x.Address);
 
-                    // Bygg en mer detaljerad respons
                     var bookingsDetails = bookings.Select(b => new
                     {
                         Id = b.Id,
@@ -160,7 +148,6 @@ namespace api_backend.Controllers
                 }
                 else if (_authService.IsCleaner())
                 {
-                    // Städare får bara se sina egna bokningar
                     int cleanerId = _authService.GetCurrentCleanerId();
 
                     var bookingIds = _context.BookingCleaner
@@ -169,14 +156,13 @@ namespace api_backend.Controllers
                         .ToList();
 
                     if (!bookingIds.Any())
-                        return Ok(new List<object>()); // Returnera tom lista om inga bokningar finns
+                        return Ok(new List<object>());
 
                     var bookings = _context.Bookings
                         .Include(b => b.Customer)
                         .Where(b => bookingIds.Contains(b.Id))
                         .ToList();
 
-                    // Hämta adressinformation
                     var customerIds = bookings.Select(b => b.Customer.Id).ToList();
                     var addressInfo = _context.Customers
                         .Where(c => customerIds.Contains(c.Id))
@@ -186,7 +172,6 @@ namespace api_backend.Controllers
                             (c, a) => new { CustomerId = c.Id, Address = a })
                         .ToDictionary(x => x.CustomerId, x => x.Address);
 
-                    // Returnera begränsad information för städaren
                     var cleanerBookings = bookings.Select(b => new
                     {
                         Id = b.Id,
@@ -212,7 +197,6 @@ namespace api_backend.Controllers
             }
         }
 
-        // GET: api/BookingApi/5
         [HttpGet("{id}")]
         public IActionResult GetById(int id)
         {
@@ -227,13 +211,11 @@ namespace api_backend.Controllers
                 if (booking == null)
                     return NotFound($"Ingen bokning hittades med id: {id}");
 
-                // Hämta adressinformation
                 var address = _context.CustomerAddresses
                     .FirstOrDefault(a => a.Id == booking.Customer.AddressId);
 
                 if (_authService.IsAdmin())
                 {
-                    // Admin får full information
                     var bookingDetails = new
                     {
                         Id = booking.Id,
@@ -270,14 +252,12 @@ namespace api_backend.Controllers
                 {
                     int cleanerId = _authService.GetCurrentCleanerId();
 
-                    // Kontrollera att städaren är kopplad till bokningen
                     bool hasAccess = _context.BookingCleaner
                         .Any(bc => bc.BookingId == id && bc.CleanerId == cleanerId);
 
                     if (!hasAccess)
                         return Forbid("Du har inte behörighet att se denna bokning");
 
-                    // Returnera begränsad information för städare
                     var cleanerBookingDetails = new
                     {
                         Id = booking.Id,
@@ -303,11 +283,9 @@ namespace api_backend.Controllers
             }
         }
 
-        // POST: api/BookingApi
         [HttpPost]
         public IActionResult CreateBooking([FromBody] BookingCreateDto bookingDto)
         {
-            // Endast admin kan skapa bokningar
             if (!_authService.IsAdmin())
                 return Forbid("Endast administratörer kan skapa bokningar");
 
@@ -316,28 +294,25 @@ namespace api_backend.Controllers
 
             try
             {
-                // Kontrollera att kunden finns
                 var customer = _context.Customers.Find(bookingDto.CustomerId);
                 if (customer == null)
                     return NotFound($"Kund med ID {bookingDto.CustomerId} hittades inte");
 
-                // Skapa ny bokning
                 var booking = new BookingEntity
                 {
                     Customer = customer,
                     Date = bookingDto.Date,
-                    Time = TimeOnly.Parse(bookingDto.Time) // Konvertera från string till TimeOnly
+                    Time = TimeOnly.Parse(bookingDto.Time)
                 };
 
                 _context.Bookings.Add(booking);
                 _context.SaveChanges();
 
-                // Om städare anges, koppla dem till bokningen
                 if (bookingDto.CleanerIds != null && bookingDto.CleanerIds.Any())
                 {
                     foreach (var cleanerId in bookingDto.CleanerIds)
                     {
-                        var cleaner = _context.Cleaners.Find(cleanerId);
+                        var cleaner = _context.Employees.Find(cleanerId);
                         if (cleaner != null)
                         {
                             _context.BookingCleaner.Add(new BookingCleanerEntity
@@ -348,7 +323,6 @@ namespace api_backend.Controllers
                         }
                         else
                         {
-                            // Loggning
                             Console.WriteLine($"Varning: Städare med ID {cleanerId} hittades inte");
                         }
                     }
@@ -364,11 +338,9 @@ namespace api_backend.Controllers
             }
         }
 
-        // PUT: api/BookingApi/5
         [HttpPut("{id}")]
         public IActionResult UpdateBooking(int id, [FromBody] BookingUpdateDto bookingDto)
         {
-            // Endast admin kan uppdatera bokningar
             if (!_authService.IsAdmin())
                 return Forbid("Endast administratörer kan uppdatera bokningar");
 
@@ -377,12 +349,10 @@ namespace api_backend.Controllers
 
             try
             {
-                // Hämta existerande bokning
                 var booking = _context.Bookings.Find(id);
                 if (booking == null)
                     return NotFound($"Ingen bokning hittades med id: {id}");
 
-                // Uppdatera kund om en ny angetts
                 if (bookingDto.CustomerId.HasValue)
                 {
                     var customer = _context.Customers.Find(bookingDto.CustomerId.Value);
@@ -392,7 +362,6 @@ namespace api_backend.Controllers
                     booking.Customer = customer;
                 }
 
-                // Uppdatera datum och tid om nya angetts
                 if (bookingDto.Date.HasValue)
                     booking.Date = bookingDto.Date.Value;
 
@@ -401,10 +370,8 @@ namespace api_backend.Controllers
 
                 _context.SaveChanges();
 
-                // Uppdatera städarkopplingar om nya angetts
                 if (bookingDto.CleanerIds != null)
                 {
-                    // Ta bort befintliga kopplingar
                     var existingBookingCleaners = _context.BookingCleaner
                         .Where(bc => bc.BookingId == id)
                         .ToList();
@@ -414,10 +381,9 @@ namespace api_backend.Controllers
                         _context.BookingCleaner.Remove(bc);
                     }
 
-                    // Lägg till nya kopplingar
                     foreach (var cleanerId in bookingDto.CleanerIds)
                     {
-                        var cleaner = _context.Cleaners.Find(cleanerId);
+                        var cleaner = _context.Employees.Find(cleanerId);
                         if (cleaner != null)
                         {
                             _context.BookingCleaner.Add(new BookingCleanerEntity
@@ -439,11 +405,9 @@ namespace api_backend.Controllers
             }
         }
 
-        // DELETE: api/BookingApi/5
         [HttpDelete("{id}")]
         public IActionResult DeleteBooking(int id)
         {
-            // Endast admin kan radera bokningar
             if (!_authService.IsAdmin())
                 return Forbid("Endast administratörer kan radera bokningar");
 
@@ -453,7 +417,6 @@ namespace api_backend.Controllers
                 if (booking == null)
                     return NotFound($"Ingen bokning hittades med id: {id}");
 
-                // Ta bort kopplade städare först
                 var bookingCleaners = _context.BookingCleaner
                     .Where(bc => bc.BookingId == id)
                     .ToList();
@@ -474,22 +437,18 @@ namespace api_backend.Controllers
             }
         }
 
-        // GET: api/BookingApi/customer/5
         [HttpGet("customer/{customerId}")]
         public IActionResult GetBookingsByCustomer(int customerId)
         {
-            // Endast admin kan se alla kundens bokningar
             if (!_authService.IsAdmin())
                 return Forbid("Endast administratörer kan se alla kundens bokningar");
 
             try
             {
-                // Kontrollera att kunden finns
                 var customer = _context.Customers.Find(customerId);
                 if (customer == null)
                     return NotFound($"Kund med ID {customerId} hittades inte");
 
-                // Hämta kundens bokningar
                 var bookings = _context.Bookings
                     .Include(b => b.Customer)
                     .Include(b => b.BookingCleaners)
@@ -497,7 +456,6 @@ namespace api_backend.Controllers
                     .Where(b => b.Customer.Id == customerId)
                     .ToList();
 
-                // Formatera svaret
                 var customerBookings = bookings.Select(b => new
                 {
                     Id = b.Id,
@@ -519,19 +477,14 @@ namespace api_backend.Controllers
         }
     }
 
-    // DTO för att skapa en bokning
     public class BookingCreateDto
     {
         public int CustomerId { get; set; }
         public DateTime Date { get; set; }
-
-        // Använd string istället för TimeOnly för att undvika konverteringsproblem
         public string Time { get; set; } = "00:00:00";
-
         public List<int>? CleanerIds { get; set; }
     }
 
-    // DTO för att uppdatera en bokning
     public class BookingUpdateDto
     {
         public int? CustomerId { get; set; }

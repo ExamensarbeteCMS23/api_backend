@@ -1,14 +1,12 @@
 using api_backend.Contexts;
-<<<<<<< HEAD
 using api_backend.Services;
-=======
 using api_backend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
->>>>>>> main
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
