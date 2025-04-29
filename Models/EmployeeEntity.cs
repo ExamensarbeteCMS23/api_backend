@@ -2,18 +2,18 @@
 
 namespace api_backend.Models;
 
-public class CleanerEntity
+public class EmployeeEntity
 {
     [Key]
     public int Id { get; set; }
     [Required]
-    public string CleanerFirstName { get; set; } = null!;
+    public string EmployeeFirstName { get; set; } = null!;
     [Required]
-    public string CleanerLastName { get; set; } = null!;
+    public string EmployeeLastName { get; set; } = null!;
     [Required]
-    public string CleanerEmail { get; set; } = null!;
+    public string EmployeeEmail { get; set; } = null!;
     [Required]
-    public string CleanerPhone { get; set; } = null!;
+    public string EmployeePhone { get; set; } = null!;
     [Required]
     public ICollection<BookingCleanerEntity> BookingCleaners { get; set; } = [];
     public int RoleId { get; set; }

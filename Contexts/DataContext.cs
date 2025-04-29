@@ -1,16 +1,14 @@
 ﻿using api_backend.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace api_backend.Contexts
 {
-    public class DataContext : DbContext
+    public class DataContext(DbContextOptions<DataContext> options) : IdentityDbContext<ApplicationUser>(options)
     {
-        public DataContext(DbContextOptions<DataContext> options) : base(options)
-        {
-        }
         public DbSet<BookingCleanerEntity> BookingCleaner { get; set; }
         public DbSet<BookingEntity> Bookings { get; set; }
-        public DbSet<CleanerEntity> Cleaners { get; set; }
+        public DbSet<EmployeeEntity> Employees { get; set; }
         public DbSet<CustomerAddressEntity> CustomerAddresses { get; set; }
         public DbSet<CustomerEntity> Customers { get; set; }
         public DbSet<RoleEntity> Roles { get; set; }
@@ -46,6 +44,12 @@ namespace api_backend.Contexts
                 .HasMany(r => r.Cleaners)
                 .WithOne(c => c.Role)
                 .HasForeignKey(c => c.RoleId);
+
+            modelBuilder.Entity<ApplicationUser>()
+                .HasOne(a => a.Employee)
+                .WithOne()
+                .HasForeignKey<ApplicationUser>(a => a.EmployeeId)
+                .IsRequired();
         }
 
     }
