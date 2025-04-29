@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api_backend.Contexts;
 
@@ -11,9 +12,11 @@ using api_backend.Contexts;
 namespace api_backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250428175706_Adding Identity")]
+    partial class AddingIdentity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -163,6 +166,9 @@ namespace api_backend.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<int>("CleanerId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -173,9 +179,6 @@ namespace api_backend.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -212,7 +215,7 @@ namespace api_backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId")
+                    b.HasIndex("CleanerId")
                         .IsUnique();
 
                     b.HasIndex("NormalizedEmail")
@@ -265,6 +268,40 @@ namespace api_backend.Migrations
                     b.ToTable("Bookings");
                 });
 
+            modelBuilder.Entity("api_backend.Models.CleanerEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CleanerEmail")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CleanerFirstName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CleanerLastName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CleanerPhone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("Cleaners");
+                });
+
             modelBuilder.Entity("api_backend.Models.CustomerAddressEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -314,40 +351,6 @@ namespace api_backend.Migrations
                     b.HasIndex("AddressId");
 
                     b.ToTable("Customers");
-                });
-
-            modelBuilder.Entity("api_backend.Models.EmployeeEntity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("EmployeeEmail")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmployeeFirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmployeeLastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmployeePhone")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("api_backend.Models.RoleEntity", b =>
@@ -420,13 +423,13 @@ namespace api_backend.Migrations
 
             modelBuilder.Entity("api_backend.Models.ApplicationUser", b =>
                 {
-                    b.HasOne("api_backend.Models.EmployeeEntity", "Employee")
+                    b.HasOne("api_backend.Models.CleanerEntity", "Cleaner")
                         .WithOne()
-                        .HasForeignKey("api_backend.Models.ApplicationUser", "EmployeeId")
+                        .HasForeignKey("api_backend.Models.ApplicationUser", "CleanerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Cleaner");
                 });
 
             modelBuilder.Entity("api_backend.Models.BookingCleanerEntity", b =>
@@ -437,7 +440,7 @@ namespace api_backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("api_backend.Models.EmployeeEntity", "Cleaner")
+                    b.HasOne("api_backend.Models.CleanerEntity", "Cleaner")
                         .WithMany("BookingCleaners")
                         .HasForeignKey("CleanerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -459,16 +462,7 @@ namespace api_backend.Migrations
                     b.Navigation("Customer");
                 });
 
-            modelBuilder.Entity("api_backend.Models.CustomerEntity", b =>
-                {
-                    b.HasOne("api_backend.Models.CustomerAddressEntity", null)
-                        .WithMany("Customers")
-                        .HasForeignKey("AddressId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("api_backend.Models.EmployeeEntity", b =>
+            modelBuilder.Entity("api_backend.Models.CleanerEntity", b =>
                 {
                     b.HasOne("api_backend.Models.RoleEntity", "Role")
                         .WithMany("Cleaners")
@@ -479,7 +473,21 @@ namespace api_backend.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("api_backend.Models.CustomerEntity", b =>
+                {
+                    b.HasOne("api_backend.Models.CustomerAddressEntity", null)
+                        .WithMany("Customers")
+                        .HasForeignKey("AddressId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("api_backend.Models.BookingEntity", b =>
+                {
+                    b.Navigation("BookingCleaners");
+                });
+
+            modelBuilder.Entity("api_backend.Models.CleanerEntity", b =>
                 {
                     b.Navigation("BookingCleaners");
                 });
@@ -487,11 +495,6 @@ namespace api_backend.Migrations
             modelBuilder.Entity("api_backend.Models.CustomerAddressEntity", b =>
                 {
                     b.Navigation("Customers");
-                });
-
-            modelBuilder.Entity("api_backend.Models.EmployeeEntity", b =>
-                {
-                    b.Navigation("BookingCleaners");
                 });
 
             modelBuilder.Entity("api_backend.Models.RoleEntity", b =>
