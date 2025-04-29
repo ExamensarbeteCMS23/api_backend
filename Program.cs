@@ -1,4 +1,5 @@
 using api_backend.Contexts;
+using api_backend.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<FakeAuthService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnectionString");
 if (string.IsNullOrEmpty(connectionString))
