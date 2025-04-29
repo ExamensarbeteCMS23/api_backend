@@ -8,5 +8,5 @@ public class RoleEntity
     public int Id { get; set; }
     [Required]
     public String Role { get; set; } = null!;
-    public ICollection<CleanerEntity> Cleaners { get; set; } = [];
+    public ICollection<EmployeeEntity> Cleaners { get; set; } = [];
 }

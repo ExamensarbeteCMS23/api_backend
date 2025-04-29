@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using api_backend.Contexts;
 
@@ -11,9 +12,11 @@ using api_backend.Contexts;
 namespace api_backend.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250429074049_ChangeName from Cleaner to Employee")]
+    partial class ChangeNamefromCleanertoEmployee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -163,6 +166,9 @@ namespace api_backend.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<int>("CleanerId")
+                        .HasColumnType("int");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
@@ -173,9 +179,6 @@ namespace api_backend.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<int>("EmployeeId")
-                        .HasColumnType("int");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -212,7 +215,7 @@ namespace api_backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId")
+                    b.HasIndex("CleanerId")
                         .IsUnique();
 
                     b.HasIndex("NormalizedEmail")
@@ -347,7 +350,7 @@ namespace api_backend.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("Employees");
+                    b.ToTable("Cleaners");
                 });
 
             modelBuilder.Entity("api_backend.Models.RoleEntity", b =>
@@ -420,13 +423,13 @@ namespace api_backend.Migrations
 
             modelBuilder.Entity("api_backend.Models.ApplicationUser", b =>
                 {
-                    b.HasOne("api_backend.Models.EmployeeEntity", "Employee")
+                    b.HasOne("api_backend.Models.EmployeeEntity", "Cleaner")
                         .WithOne()
-                        .HasForeignKey("api_backend.Models.ApplicationUser", "EmployeeId")
+                        .HasForeignKey("api_backend.Models.ApplicationUser", "CleanerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Employee");
+                    b.Navigation("Cleaner");
                 });
 
             modelBuilder.Entity("api_backend.Models.BookingCleanerEntity", b =>
