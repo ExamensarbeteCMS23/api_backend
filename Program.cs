@@ -1,5 +1,4 @@
 using api_backend.Contexts;
-using api_backend.Services;
 using api_backend.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -36,7 +35,6 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<FakeAuthService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnectionString");
 if (string.IsNullOrEmpty(connectionString))
