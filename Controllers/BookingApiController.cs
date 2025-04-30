@@ -47,6 +47,8 @@ namespace api_backend.Controllers
             return roles.Contains("Admin");
         }
 
+
+        // Seedmetod
         [HttpGet("seed")]
         [Authorize(Roles = "Admin")]
         [ActionName("Seed testdata")]
@@ -77,14 +79,10 @@ namespace api_backend.Controllers
                 _context.Customers.Add(customer);
                 await _context.SaveChangesAsync();
 
-                // 3. Skapa roll (om det inte redan finns)
+                // 3. Hämta Cleaner-rollen
                 var role = await _context.Roles.FirstOrDefaultAsync(r => r.Role == "Cleaner");
                 if (role == null)
-                {
-                    role = new RoleEntity { Role = "Cleaner" };
-                    _context.Roles.Add(role);
-                    await _context.SaveChangesAsync();
-                }
+                    return NotFound("Cleaner-rollen hittades inte i databasen");
 
                 // 4. Skapa employee/cleaner
                 var employee = new EmployeeEntity
