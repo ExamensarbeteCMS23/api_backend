@@ -1,5 +1,6 @@
 ﻿using api_backend.Contexts;
 using api_backend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,24 +34,29 @@ namespace api_backend.Controllers
                 return Unauthorized("Fel användare eller lösenord");
 
             var roles = await _userManager.GetRolesAsync(user);
-            var role = roles.FirstOrDefault();
+            
 
-            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["authToken:Key"]));
 
             var authClaims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Role, role)
             };
 
-            
+            foreach (var role in roles) {
+                authClaims.Add(new Claim(ClaimTypes.Role, role));
+            }
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["authToken:Key"]));
+
+            Console.WriteLine("LOGIN: Issuer = " + "testissuer");
+            Console.WriteLine("LOGIN: Audience = " + "testaudience");
+            Console.WriteLine("LOGIN: Key = " + _config["authToken:Key"]);
 
             var token = new JwtSecurityToken(
                 issuer: "testissuer",
                 audience: "testaudience",
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: DateTime.UtcNow.AddHours(4),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
@@ -73,11 +79,12 @@ namespace api_backend.Controllers
             {
                 token = tokenString,
                 expiration = token.ValidTo,
-                role = role,
+                role = roles,
             });
         }
 
         [HttpPost("RegisterEmployee")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterEmployee([FromBody] RegisterCleanerDto dto)
         {
             if (!ModelState.IsValid)
@@ -150,7 +157,5 @@ namespace api_backend.Controllers
             }
 
         }
-
-
     }
 }

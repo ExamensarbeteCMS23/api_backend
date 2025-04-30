@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 
 
@@ -28,9 +29,15 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["authToken:Issuer"],
         ValidAudience = builder.Configuration["authToken:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["authToken:Key"]))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["authToken:Key"])),
+        RoleClaimType = ClaimTypes.Role
     };
 });
+
+Console.WriteLine("VALIDATION: Issuer = " + builder.Configuration["authToken:Issuer"]);
+Console.WriteLine("VALIDATION: Audience = " + builder.Configuration["authToken:Audience"]);
+Console.WriteLine("VALIDATION: Key = " + builder.Configuration["authToken:Key"]);
+
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -45,11 +52,16 @@ if (string.IsNullOrEmpty(connectionString))
 builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+
+app.UseRouting();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
