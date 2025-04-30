@@ -32,7 +32,8 @@ namespace api_backend.Controllers
             if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized("Fel användare eller lösenord");
 
-            var userRoles = _userManager.GetRolesAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
 
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["authToken:Key"]));
 
@@ -40,10 +41,11 @@ namespace api_backend.Controllers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Role, role)
             };
 
-            authClaims.AddRange(userRoles.Select(RoleEntity => new Claim(ClaimTypes.Role, role)));
+            
 
             var token = new JwtSecurityToken(
                 issuer: "testissuer",
@@ -70,7 +72,8 @@ namespace api_backend.Controllers
             return Ok(new
             {
                 token = tokenString,
-                expiration = token.ValidTo
+                expiration = token.ValidTo,
+                role = role,
             });
         }
 
