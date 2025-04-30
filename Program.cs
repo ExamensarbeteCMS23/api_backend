@@ -7,7 +7,6 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -34,11 +33,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-Console.WriteLine("VALIDATION: Issuer = " + builder.Configuration["authToken:Issuer"]);
-Console.WriteLine("VALIDATION: Audience = " + builder.Configuration["authToken:Audience"]);
-Console.WriteLine("VALIDATION: Key = " + builder.Configuration["authToken:Key"]);
-
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -57,14 +51,9 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseHttpsRedirection();
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

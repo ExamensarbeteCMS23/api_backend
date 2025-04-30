@@ -28,14 +28,14 @@ namespace api_backend.Controllers
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
+            // Hämtar eposten från databasen
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized("Fel användare eller lösenord");
 
             var roles = await _userManager.GetRolesAsync(user);
             
-
-
+            // Sätter Claims som kommer in i Token senare
             var authClaims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
@@ -43,14 +43,11 @@ namespace api_backend.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
             };
 
+            // Lägger till roller i Claims
             foreach (var role in roles) {
                 authClaims.Add(new Claim(ClaimTypes.Role, role));
             }
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["authToken:Key"]));
-
-            Console.WriteLine("LOGIN: Issuer = " + "testissuer");
-            Console.WriteLine("LOGIN: Audience = " + "testaudience");
-            Console.WriteLine("LOGIN: Key = " + _config["authToken:Key"]);
 
             var token = new JwtSecurityToken(
                 issuer: "testissuer",
@@ -60,6 +57,7 @@ namespace api_backend.Controllers
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
 
+            // Detta är den som kommer vara token framöver
             string tokenString;
             try
             {
@@ -77,7 +75,7 @@ namespace api_backend.Controllers
             return Ok(new
             {
                 token = tokenString,
-                expiration = token.ValidTo,
+                expiration = token.ValidTo, // Denna skulle man kunna ta bort i ett senare skede
             });
         }
     }
