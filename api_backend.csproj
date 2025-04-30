@@ -24,8 +24,8 @@
 
   <ItemGroup>
     <Folder Include="Database\" />
-    <Folder Include="Interface\" />
-    <Folder Include="Repositorys\" />
+    <Folder Include="Interfaces\" />
+    <Folder Include="Repositories\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
