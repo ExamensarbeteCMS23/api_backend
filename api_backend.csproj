@@ -24,6 +24,9 @@
 
   <ItemGroup>
     <Folder Include="Database\" />
+    <Folder Include="Interface\" />
+    <Folder Include="Repositorys\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
