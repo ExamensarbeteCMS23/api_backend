@@ -1,161 +1,82 @@
 ﻿using api_backend.Contexts;
+using api_backend.Dtos;
 using api_backend.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace api_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Kräver autentisering för alla endpoints
+    [Authorize] 
     public class BookingApiController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly ILogger<BookingApiController> _logger;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public BookingApiController(DataContext context, UserManager<ApplicationUser> userManager)
+        public BookingApiController(
+            DataContext context,
+            ILogger<BookingApiController> logger,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _logger = logger;
             _userManager = userManager;
         }
 
         // Hjälpmetod för att hämta nuvarande användare med Employee-data
-        private async Task<(ApplicationUser User, EmployeeEntity Employee)> GetCurrentUserWithEmployee()
+        private async Task<(ApplicationUser? User, EmployeeEntity? Employee)> GetCurrentUserWithEmployee()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // Hämtar alla claims av typen NameIdentifier
+            var userIdClaims = User.FindAll(ClaimTypes.NameIdentifier).ToList();
+            _logger.LogInformation("Found {Count} nameidentifier claims", userIdClaims.Count);
+
+            //Försök omvandla claim-värdet till ett GUID och använd det som användar-ID
+            string? userId = null;
+            foreach (var claim in userIdClaims)
+            {
+                if (Guid.TryParse(claim.Value, out _))
+                {
+                    userId = claim.Value;
+                    break;
+                }
+            }
+
+            _logger.LogInformation("Selected UserId: {UserId}", userId);
+
             if (string.IsNullOrEmpty(userId))
                 return (null, null);
 
             var user = await _userManager.FindByIdAsync(userId);
+            _logger.LogInformation("Found user: {HasUser}, EmployeeId: {EmployeeId}",
+                user != null, user?.EmployeeId);
+
             if (user == null)
                 return (null, null);
 
             var employee = await _context.Employees
                 .FirstOrDefaultAsync(e => e.Id == user.EmployeeId);
+            _logger.LogInformation("Found employee: {HasEmployee}", employee != null);
 
             return (user, employee);
         }
 
-        // Hjälpmetod för att kontrollera om användaren är Admin
-        private async Task<bool> IsAdmin()
-        {
-            var roles = await _userManager.GetRolesAsync(
-                await _userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)));
-            return roles.Contains("Admin");
-        }
-
-
-        // Seedmetod
-        [HttpGet("seed")]
-        [Authorize(Roles = "Admin")]
-        [ActionName("Seed testdata")]
-        public async Task<IActionResult> SeedTestData()
-        {
-            if (await _context.Bookings.AnyAsync())
-                return Ok("Testdata finns redan.");
-
-            try
-            {
-                // 1. Skapa adress
-                var address = new CustomerAddressEntity
-                {
-                    CustomerStreetName = "Testgatan 1",
-                    CustomerCity = "Stockholm",
-                    CustomerPostalCode = "12345"
-                };
-                _context.CustomerAddresses.Add(address);
-                await _context.SaveChangesAsync();
-
-                // 2. Skapa kund
-                var customer = new CustomerEntity
-                {
-                    CustomerFirstName = "Tina",
-                    CustomerLastName = "Lutti",
-                    AddressId = address.Id
-                };
-                _context.Customers.Add(customer);
-                await _context.SaveChangesAsync();
-
-                // 3. Hämta Cleaner-rollen
-                var role = await _context.Roles.FirstOrDefaultAsync(r => r.Role == "Cleaner");
-                if (role == null)
-                    return NotFound("Cleaner-rollen hittades inte i databasen");
-
-                // 4. Skapa employee/cleaner
-                var employee = new EmployeeEntity
-                {
-                    EmployeeFirstName = "Anna",
-                    EmployeeLastName = "Städsson",
-                    EmployeeEmail = "anna@clean.com",
-                    EmployeePhone = "0701234567",
-                    RoleId = role.Id
-                };
-                _context.Employees.Add(employee);
-                await _context.SaveChangesAsync();
-
-                // 5. Skapa bokning
-                var booking = new BookingEntity
-                {
-                    Customer = customer,
-                    Date = DateTime.Today.AddDays(1),
-                    Time = new TimeOnly(9, 0)
-                };
-                _context.Bookings.Add(booking);
-                await _context.SaveChangesAsync();
-
-                // 6. Skapa koppling mellan bokning och städare
-                var bookingCleaner = new BookingCleanerEntity
-                {
-                    BookingId = booking.Id,
-                    CleanerId = employee.Id
-                };
-                _context.BookingCleaner.Add(bookingCleaner);
-                await _context.SaveChangesAsync();
-
-                return Ok($"Testdata skapad! Städare ID: {employee.Id}, Bokning ID: {booking.Id}");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Fel vid skapande av testdata: {ex.Message} - {ex.InnerException?.Message}");
-            }
-        }
-
         [HttpGet]
-        [ActionName("Hämta alla bokningar")]
+        [Authorize(Roles = "Admin")]
+        [ActionName("GetAllBookings")]
         public async Task<IActionResult> GetAllBookings()
         {
             try
             {
-                var (user, employee) = await GetCurrentUserWithEmployee();
-                if (user == null || employee == null)
-                    return Unauthorized("Användare hittades inte");
+                _logger.LogInformation("Hämtar alla bokningar");
 
-                var isAdmin = await IsAdmin();
-
-                if (isAdmin)
-                {
-                    // Admin får se alla bokningar med full information
-                    var bookings = await _context.Bookings
-                        .Include(b => b.Customer)
-                        .Include(b => b.BookingCleaners)
-                            .ThenInclude(bc => bc.Cleaner)
-                        .ToListAsync();
-
-                    // Hämta också adressinformation för varje kund
-                    var customerIds = bookings.Select(b => b.Customer.Id).ToList();
-                    var addressInfo = await _context.Customers
-                        .Where(c => customerIds.Contains(c.Id))
-                        .Join(_context.CustomerAddresses,
-                            c => c.AddressId,
-                            a => a.Id,
-                            (c, a) => new { CustomerId = c.Id, Address = a })
-                        .ToDictionaryAsync(x => x.CustomerId, x => x.Address);
-
-                    // Bygg en mer detaljerad respons
-                    var bookingsDetails = bookings.Select(b => new
+                var bookings = await _context.Bookings
+                    .Include(b => b.Customer)
+                    .Select(b => new
                     {
                         Id = b.Id,
                         Date = b.Date.ToString("yyyy-MM-dd"),
@@ -163,311 +84,147 @@ namespace api_backend.Controllers
                         Customer = new
                         {
                             Id = b.Customer.Id,
-                            Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",
-                            Address = addressInfo.TryGetValue(b.Customer.Id, out var addr)
-                                ? $"{addr.CustomerStreetName}, {addr.CustomerPostalCode} {addr.CustomerCity}"
-                                : "Adress saknas"
-                        },
-                        Cleaners = b.BookingCleaners.Select(bc => new
-                        {
-                            Id = bc.Cleaner.Id,
-                            Name = $"{bc.Cleaner.EmployeeFirstName} {bc.Cleaner.EmployeeLastName}",
-                            Email = bc.Cleaner.EmployeeEmail,
-                            Phone = bc.Cleaner.EmployeePhone
-                        }).ToList()
-                    }).ToList();
-
-                    return Ok(bookingsDetails);
-                }
-                else
-                {
-                    // Städare får bara se sina egna bokningar
-                    var cleanerId = employee.Id;
-
-                    var bookingIds = await _context.BookingCleaner
-                        .Where(bc => bc.CleanerId == cleanerId)
-                        .Select(bc => bc.BookingId)
-                        .ToListAsync();
-
-                    if (!bookingIds.Any())
-                        return Ok(new List<object>()); // Returnera tom lista om inga bokningar finns
-
-                    var bookings = await _context.Bookings
-                        .Include(b => b.Customer)
-                        .Where(b => bookingIds.Contains(b.Id))
-                        .ToListAsync();
-
-                    // Hämta adressinformation
-                    var customerIds = bookings.Select(b => b.Customer.Id).ToList();
-                    var addressInfo = await _context.Customers
-                        .Where(c => customerIds.Contains(c.Id))
-                        .Join(_context.CustomerAddresses,
-                            c => c.AddressId,
-                            a => a.Id,
-                            (c, a) => new { CustomerId = c.Id, Address = a })
-                        .ToDictionaryAsync(x => x.CustomerId, x => x.Address);
-
-                    // Returnera begränsad information för städaren
-                    var cleanerBookings = bookings.Select(b => new
-                    {
-                        Id = b.Id,
-                        Date = b.Date.ToString("yyyy-MM-dd"),
-                        Time = b.Time.ToString(),
-                        Customer = new
-                        {
-                            Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",
-                            Address = addressInfo.TryGetValue(b.Customer.Id, out var addr)
-                                ? $"{addr.CustomerStreetName}, {addr.CustomerPostalCode} {addr.CustomerCity}"
-                                : "Adress saknas"
+                            Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}"
                         }
-                    }).ToList();
+                    })
+                    .ToListAsync();
 
-                    return Ok(cleanerBookings);
-                }
+                _logger.LogInformation("Hämtade {Count} bookings", bookings.Count);
+                return Ok(bookings);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internt fel: {ex.Message} - {ex.InnerException?.Message}");
+                _logger.LogError(ex, "Fel vid hämtning av bokningar");
+                return StatusCode(500, "Ett fel har uppstått när bokningarna hämtades: " + ex.Message);
             }
         }
 
         [HttpGet("{id}")]
-        [ActionName("Hämta en specifik bokning")]
+        [Authorize(Roles = "Admin")]
+        [ActionName("GetBookingById")]
         public async Task<IActionResult> GetBookingById(int id)
         {
             try
             {
-                var (user, employee) = await GetCurrentUserWithEmployee();
-                if (user == null || employee == null)
-                    return Unauthorized("Användare hittades inte");
-
                 var booking = await _context.Bookings
                     .Include(b => b.Customer)
-                    .Include(b => b.BookingCleaners)
-                        .ThenInclude(bc => bc.Cleaner)
                     .FirstOrDefaultAsync(b => b.Id == id);
 
                 if (booking == null)
-                    return NotFound($"Ingen bokning hittades med id: {id}");
-
-                // Hämta adressinformation
-                var address = await _context.CustomerAddresses
-                    .FirstOrDefaultAsync(a => a.Id == booking.Customer.AddressId);
-
-                var isAdmin = await IsAdmin();
-                if (isAdmin)
                 {
-                    // Admin får full information
-                    var bookingDetails = new
-                    {
-                        Id = booking.Id,
-                        Date = booking.Date.ToString("yyyy-MM-dd"),
-                        Time = booking.Time.ToString(),
-                        Customer = new
-                        {
-                            Id = booking.Customer.Id,
-                            FirstName = booking.Customer.CustomerFirstName,
-                            LastName = booking.Customer.CustomerLastName,
-                            Address = address != null
-                                ? new
-                                {
-                                    Id = address.Id,
-                                    Street = address.CustomerStreetName,
-                                    City = address.CustomerCity,
-                                    PostalCode = address.CustomerPostalCode
-                                }
-                                : null
-                        },
-                        Cleaners = booking.BookingCleaners.Select(bc => new
-                        {
-                            Id = bc.Cleaner.Id,
-                            FirstName = bc.Cleaner.EmployeeFirstName,
-                            LastName = bc.Cleaner.EmployeeLastName,
-                            Email = bc.Cleaner.EmployeeEmail,
-                            Phone = bc.Cleaner.EmployeePhone
-                        }).ToList()
-                    };
-
-                    return Ok(bookingDetails);
+                    return NotFound($"Bokning med ID {id} hittades inte");
                 }
-                else
+
+                var result = new
                 {
-                    // Kontrollera att städaren är kopplad till bokningen
-                    bool hasAccess = await _context.BookingCleaner
-                        .AnyAsync(bc => bc.BookingId == id && bc.CleanerId == employee.Id);
-
-                    if (!hasAccess)
-                        return Forbid("Du har inte behörighet att se denna bokning");
-
-                    // Returnera begränsad information för städare
-                    var cleanerBookingDetails = new
+                    Id = booking.Id,
+                    Date = booking.Date.ToString("yyyy-MM-dd"),
+                    Time = booking.Time.ToString(),
+                    Customer = new
                     {
-                        Id = booking.Id,
-                        Date = booking.Date.ToString("yyyy-MM-dd"),
-                        Time = booking.Time.ToString(),
-                        Customer = new
-                        {
-                            Name = $"{booking.Customer.CustomerFirstName} {booking.Customer.CustomerLastName}",
-                            Address = address != null
-                                ? $"{address.CustomerStreetName}, {address.CustomerPostalCode} {address.CustomerCity}"
-                                : "Adress saknas"
-                        }
-                    };
+                        Id = booking.Customer.Id,
+                        Name = $"{booking.Customer.CustomerFirstName} {booking.Customer.CustomerLastName}"
+                    }
+                };
 
-                    return Ok(cleanerBookingDetails);
-                }
+                return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internt fel: {ex.Message} - {ex.InnerException?.Message}");
+                _logger.LogError(ex, "Fel vid hämtning av bokning med ID {BookingId}", id);
+                return StatusCode(500, "Ett fel har uppsått vid hämtning av bokningen: " + ex.Message);
             }
         }
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        [ActionName("Skapa ny bokning")]
-        public async Task<IActionResult> CreateBooking([FromBody] BookingCreateDto bookingDto)
+        [ActionName("CreateBooking")]
+        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
         {
-            if (bookingDto == null)
-                return BadRequest("Bokning kan inte vara null");
+            if (dto == null)
+            {
+                return BadRequest("Request body cannot be null");
+            }
+
+            _logger.LogInformation("Skapar bokning för kund med ID: {CustomerId}", dto.CustomerId);
 
             try
             {
-                // Kontrollera att kunden finns
-                var customer = await _context.Customers.FindAsync(bookingDto.CustomerId);
+                // Verifiera att kund finns
+                var customer = await _context.Customers.FindAsync(dto.CustomerId);
                 if (customer == null)
-                    return NotFound($"Kund med ID {bookingDto.CustomerId} hittades inte");
+                {
+                    _logger.LogWarning("Kund hittades inte: {CustomerId}", dto.CustomerId);
+                    return NotFound($"Kund med ID {dto.CustomerId} hittades inte");
+                }
 
-                // Skapa ny bokning
+                // Parse time
+                if (!TimeOnly.TryParse(dto.Time, out TimeOnly parsedTime))
+                {
+                    _logger.LogWarning("Invalid time format: {Time}", dto.Time);
+                    return BadRequest($"Invalid time format: {dto.Time}. Use HH:mm or HH:mm:ss format");
+                }
+
+                // Skapa och spar bokning
                 var booking = new BookingEntity
                 {
-                    Customer = customer,
-                    Date = bookingDto.Date,
-                    Time = TimeOnly.Parse(bookingDto.Time) // Konvertera från string till TimeOnly
+                    CustomerId = dto.CustomerId, 
+                    Date = dto.Date,
+                    Time = parsedTime
                 };
 
                 _context.Bookings.Add(booking);
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("Booking created with ID: {BookingId}", booking.Id);
 
-                // Om städare anges, koppla dem till bokningen
-                if (bookingDto.CleanerIds != null && bookingDto.CleanerIds.Any())
+                // Om cleaner ID finns, lägg till det till bokningen
+                if (dto.CleanerIds != null && dto.CleanerIds.Any())
                 {
-                    foreach (var cleanerId in bookingDto.CleanerIds)
+                    foreach (var cleanerId in dto.CleanerIds)
                     {
+                        // Verifiera att cleaner finns
                         var cleaner = await _context.Employees.FindAsync(cleanerId);
                         if (cleaner != null)
                         {
-                            _context.BookingCleaner.Add(new BookingCleanerEntity
+                            var bookingCleaner = new BookingCleanerEntity
                             {
                                 BookingId = booking.Id,
                                 CleanerId = cleanerId
-                            });
+                            };
+                            _context.BookingCleaner.Add(bookingCleaner);
+                            _logger.LogInformation("Added cleaner {CleanerId} to booking {BookingId}", cleanerId, booking.Id);
                         }
                         else
                         {
-                            // Loggning
-                            Console.WriteLine($"Varning: Städare med ID {cleanerId} hittades inte");
+                            _logger.LogWarning("Cleaner not found: {CleanerId}", cleanerId);
                         }
                     }
                     await _context.SaveChangesAsync();
                 }
-
-                return CreatedAtAction(nameof(GetBookingById), new { id = booking.Id },
-                    new { message = "Bokning skapad", bookingId = booking.Id });
+                               
+                return StatusCode(201, new { bookingId = booking.Id, message = "Booking created successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Fel vid skapande av bokning: {ex.Message} - {ex.InnerException?.Message}");
-            }
-        }
-
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        [ActionName("Uppdatera bokning")]
-        public async Task<IActionResult> UpdateBooking(int id, [FromBody] BookingUpdateDto bookingDto)
-        {
-            if (bookingDto == null)
-                return BadRequest("Bokning kan inte vara null");
-
-            try
-            {
-                // Hämta existerande bokning med Include
-                var booking = await _context.Bookings
-                    .Include(b => b.Customer)
-                    .FirstOrDefaultAsync(b => b.Id == id);
-
-                if (booking == null)
-                    return NotFound($"Ingen bokning hittades med id: {id}");
-
-                // Uppdatera kund om en ny angetts
-                if (bookingDto.CustomerId.HasValue)
-                {
-                    var customer = await _context.Customers.FindAsync(bookingDto.CustomerId.Value);
-                    if (customer == null)
-                        return NotFound($"Kund med ID {bookingDto.CustomerId} hittades inte");
-
-                    booking.Customer = customer;
-                }
-
-                // Uppdatera datum och tid om nya angetts
-                if (bookingDto.Date.HasValue)
-                    booking.Date = bookingDto.Date.Value;
-
-                if (!string.IsNullOrEmpty(bookingDto.Time))
-                    booking.Time = TimeOnly.Parse(bookingDto.Time);
-
-                await _context.SaveChangesAsync();
-
-                // Uppdatera städarkopplingar om nya angetts
-                if (bookingDto.CleanerIds != null)
-                {
-                    // Ta bort befintliga kopplingar
-                    var existingBookingCleaners = await _context.BookingCleaner
-                        .Where(bc => bc.BookingId == id)
-                        .ToListAsync();
-
-                    foreach (var bc in existingBookingCleaners)
-                    {
-                        _context.BookingCleaner.Remove(bc);
-                    }
-
-                    // Lägg till nya kopplingar
-                    foreach (var cleanerId in bookingDto.CleanerIds)
-                    {
-                        var cleaner = await _context.Employees.FindAsync(cleanerId);
-                        if (cleaner != null)
-                        {
-                            _context.BookingCleaner.Add(new BookingCleanerEntity
-                            {
-                                BookingId = id,
-                                CleanerId = cleanerId
-                            });
-                        }
-                    }
-
-                    await _context.SaveChangesAsync();
-                }
-
-                return Ok(new { message = "Bokning uppdaterad", bookingId = id });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Fel vid uppdatering av bokning: {ex.Message} - {ex.InnerException?.Message}");
+                _logger.LogError(ex, "Error creating booking");
+                return StatusCode(500, "An error occurred while creating the booking: " + ex.Message);
             }
         }
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        [ActionName("Radera bokning")]
+        [ActionName("DeleteBooking")]
         public async Task<IActionResult> DeleteBooking(int id)
         {
             try
             {
                 var booking = await _context.Bookings.FindAsync(id);
                 if (booking == null)
-                    return NotFound($"Ingen bokning hittades med id: {id}");
+                {
+                    return NotFound($"Bokning med ID {id} hittades inte");
+                }
 
-                // Ta bort kopplade städare först
+                // Ta bort BookingCleaner först
                 var bookingCleaners = await _context.BookingCleaner
                     .Where(bc => bc.BookingId == id)
                     .ToListAsync();
@@ -480,17 +237,128 @@ namespace api_backend.Controllers
                 _context.Bookings.Remove(booking);
                 await _context.SaveChangesAsync();
 
-                return Ok(new { message = "Bokning raderad", bookingId = id });
+                return Ok(new { message = "Booking deleted successfully" });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Fel vid radering av bokning: {ex.Message} - {ex.InnerException?.Message}");
+                _logger.LogError(ex, "Error deleting booking with ID {BookingId}", id);
+                return StatusCode(500, "An error occurred while deleting the booking: " + ex.Message);
             }
         }
 
+        // PUT: api/BookingApi/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        [ActionName("UpdateBooking")]
+        public async Task<IActionResult> UpdateBooking(int id, [FromBody] BookingUpdateDto bookingDto)
+        {
+            if (bookingDto == null)
+                return BadRequest("Booking cannot be null");
+
+            _logger.LogInformation("Attempting to update booking {BookingId}", id);
+
+            try
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // Hämta existerande bokning
+                    var booking = await _context.Bookings.FindAsync(id);
+                    if (booking == null)
+                    {
+                        _logger.LogWarning("No booking found with id: {BookingId}", id);
+                        return NotFound($"No booking found with id: {id}");
+                    }
+
+                    // Uppdatera kund om en ny angetts
+                    if (bookingDto.CustomerId.HasValue)
+                    {
+                        var customer = await _context.Customers.FindAsync(bookingDto.CustomerId.Value);
+                        if (customer == null)
+                        {
+                            _logger.LogWarning("Customer with ID {CustomerId} not found", bookingDto.CustomerId.Value);
+                            return NotFound($"Customer with ID {bookingDto.CustomerId} not found");
+                        }
+
+                        booking.CustomerId = customer.Id;
+                    }
+
+                    // Uppdatera om ny datum och tid angetts
+                    if (bookingDto.Date.HasValue)
+                        booking.Date = bookingDto.Date.Value;
+
+                    if (!string.IsNullOrEmpty(bookingDto.Time))
+                    {
+                        if (!TimeOnly.TryParse(bookingDto.Time, out TimeOnly parsedTime))
+                        {
+                            _logger.LogWarning("Invalid time format: {Time}", bookingDto.Time);
+                            return BadRequest($"Invalid time format: {bookingDto.Time}. Använd format HH:mm eller HH:mm:ss");
+                        }
+                        booking.Time = parsedTime;
+                    }
+
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Booking {BookingId} updated", id);
+
+                    // Uppdatera städarkopplingar om nya angetts
+                    if (bookingDto.CleanerIds != null)
+                    {
+                        // Ta bort befintliga kopplingar
+                        var existingBookingCleaners = await _context.BookingCleaner
+                            .Where(bc => bc.BookingId == id)
+                            .ToListAsync();
+
+                        foreach (var bc in existingBookingCleaners)
+                        {
+                            _context.BookingCleaner.Remove(bc);
+                        }
+                        _logger.LogInformation("Removed {Count} existing cleaner connections", existingBookingCleaners.Count);
+
+                        // Lägg till nya kopplingar
+                        foreach (var cleanerId in bookingDto.CleanerIds)
+                        {
+                            var cleaner = await _context.Employees.FindAsync(cleanerId);
+                            if (cleaner != null)
+                            {
+                                _context.BookingCleaner.Add(new BookingCleanerEntity
+                                {
+                                    BookingId = id,
+                                    CleanerId = cleanerId
+                                });
+                                _logger.LogInformation("Added cleaner {CleanerId} to booking {BookingId}", cleanerId, id);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Cleaner with ID {CleanerId} not found", cleanerId);
+                            }
+                        }
+
+                        await _context.SaveChangesAsync();
+                    }
+
+                    await transaction.CommitAsync();
+                    _logger.LogInformation("Transaction for updating booking {BookingId} completed", id);
+
+                    return Ok(new { message = "Booking updated", bookingId = id });
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Transaction error when updating booking {BookingId}", id);
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Critical error when updating booking {BookingId}", id);
+                return StatusCode(500, $"Error updating booking: {ex.Message}");
+            }
+        }
+
+        // GET: api/BookingApi/customer/{customerId}
         [HttpGet("customer/{customerId}")]
         [Authorize(Roles = "Admin")]
-        [ActionName("Hämta kundens alla bokningar")]
+        [ActionName("GetCustomerBookings")]
         public async Task<IActionResult> GetCustomerBookings(int customerId)
         {
             try
@@ -498,14 +366,17 @@ namespace api_backend.Controllers
                 // Kontrollera att kunden finns
                 var customer = await _context.Customers.FindAsync(customerId);
                 if (customer == null)
-                    return NotFound($"Kund med ID {customerId} hittades inte");
+                {
+                    _logger.LogWarning("Customer with ID {CustomerId} not found", customerId);
+                    return NotFound($"Customer with ID {customerId} not found");
+                }
 
                 // Hämta kundens bokningar
                 var bookings = await _context.Bookings
                     .Include(b => b.Customer)
                     .Include(b => b.BookingCleaners)
                         .ThenInclude(bc => bc.Cleaner)
-                    .Where(b => b.Customer.Id == customerId)
+                    .Where(b => b.CustomerId == customerId)
                     .ToListAsync();
 
                 // Formatera svaret
@@ -521,33 +392,74 @@ namespace api_backend.Controllers
                     }).ToList()
                 }).ToList();
 
+                _logger.LogInformation("Retrieved {Count} bookings for customer {CustomerId}", customerBookings.Count, customerId);
                 return Ok(customerBookings);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internt fel: {ex.Message} - {ex.InnerException?.Message}");
+                _logger.LogError(ex, "Error retrieving bookings for customer {CustomerId}", customerId);
+                return StatusCode(500, $"Internal error: {ex.Message}");
             }
         }
-    }
 
-    // DTO för att skapa en bokning
-    public class BookingCreateDto
-    {
-        public int CustomerId { get; set; }
-        public DateTime Date { get; set; }
+        // GET: api/BookingApi/cleaner/me
+        [HttpGet("cleaner/me")]
+        [ActionName("GetMyBookings")]
+        public async Task<IActionResult> GetMyBookings()
+        {
+            try
+            {
+                var (user, employee) = await GetCurrentUserWithEmployee();
+                if (user == null || employee == null)
+                    return Unauthorized("User or employee not found");
 
-        // Använd string istället för TimeOnly för att undvika konverteringsproblem
-        public string Time { get; set; } = "00:00:00";
+                // Hämta bokningar för inloggad städare
+                var bookingIds = await _context.BookingCleaner
+                    .Where(bc => bc.CleanerId == employee.Id)
+                    .Select(bc => bc.BookingId)
+                    .ToListAsync();
 
-        public List<int>? CleanerIds { get; set; }
-    }
+                if (!bookingIds.Any())
+                    return Ok(new List<object>()); 
 
-    // DTO för att uppdatera en bokning
-    public class BookingUpdateDto
-    {
-        public int? CustomerId { get; set; }
-        public DateTime? Date { get; set; }
-        public string? Time { get; set; }
-        public List<int>? CleanerIds { get; set; }
+                var bookings = await _context.Bookings
+                    .Include(b => b.Customer)
+                    .Where(b => bookingIds.Contains(b.Id))
+                    .ToListAsync();
+
+                // Hämta adressinformation
+                var customerIds = bookings.Select(b => b.CustomerId).ToList();
+                var addressInfo = await _context.Customers
+                    .Where(c => customerIds.Contains(c.Id))
+                    .Join(_context.CustomerAddresses,
+                        c => c.AddressId,
+                        a => a.Id,
+                        (c, a) => new { CustomerId = c.Id, Address = a })
+                    .ToDictionaryAsync(x => x.CustomerId, x => x.Address);
+
+                // Formatera svaret
+                var myBookings = bookings.Select(b => new
+                {
+                    Id = b.Id,
+                    Date = b.Date.ToString("yyyy-MM-dd"),
+                    Time = b.Time.ToString(),
+                    Customer = new
+                    {
+                        Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",
+                        Address = addressInfo.TryGetValue(b.CustomerId, out var addr)
+                            ? $"{addr.CustomerStreetName}, {addr.CustomerPostalCode} {addr.CustomerCity}"
+                            : "Address missing"
+                    }
+                }).ToList();
+
+                _logger.LogInformation("Retrieved {Count} bookings for cleaner {CleanerId}", myBookings.Count, employee.Id);
+                return Ok(myBookings);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving cleaner's bookings");
+                return StatusCode(500, $"Internal error: {ex.Message}");
+            }
+        }
     }
 }
