@@ -1,5 +1,8 @@
 using api_backend.Contexts;
+using api_backend.Interfaces;
 using api_backend.Models;
+using api_backend.Repositories;
+using api_backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +50,8 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(connectionString));
 
 builder.Services.AddAuthorization();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<EmployeeRepository>();
 
 var app = builder.Build();
 app.UseSwagger();
