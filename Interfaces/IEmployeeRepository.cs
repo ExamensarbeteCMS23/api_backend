@@ -8,6 +8,8 @@ namespace api_backend.Interfaces
         Task<IEnumerable<EmployeeEntity>> GetAllAsync();
         Task UpdateAsync(EmployeeEntity entity);
         Task SaveAsync();
-
+        Task AddEmployeeAsync(EmployeeEntity entity);
+        Task RemoveEmployeeAsync(int id);
+        Task<string> GetRoleNameById(int id);
     }
 }

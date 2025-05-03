@@ -1,4 +1,4 @@
-﻿namespace api_backend.Models
+﻿namespace api_backend.Dtos
 {
     public class UpdateEmployeeDto
     {

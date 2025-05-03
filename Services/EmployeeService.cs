@@ -1,4 +1,6 @@
-﻿using api_backend.Interfaces;
+﻿using api_backend.Contexts;
+using api_backend.Dtos;
+using api_backend.Interfaces;
 using api_backend.Models;
 using api_backend.Repositories;
 using Microsoft.AspNetCore.Identity;
@@ -10,11 +12,13 @@ namespace api_backend.Services
     {
         private readonly EmployeeRepository _repository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly DataContext _context;
 
-        public EmployeeService(EmployeeRepository repository, UserManager<ApplicationUser> userManager)
+        public EmployeeService(EmployeeRepository repository, UserManager<ApplicationUser> userManager, DataContext context)
         {
             _repository = repository;
             _userManager = userManager;
+            _context = context;
         }
 
         public async Task<IEnumerable<EmployeeEntity>> GetAllAsync()
@@ -28,9 +32,53 @@ namespace api_backend.Services
 
         }
 
-        public Task<object> RegisterEmployeeAsync(RegisterCleanerDto dto)
+        public async Task<ServiceResult<EmployeeEntity>> RegisterEmployeeAsync(RegisterCleanerDto dto)
         {
-            throw new NotImplementedException();
+            var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+            if (existingUser != null)
+            {
+                return ServiceResult<EmployeeEntity>.Fail("Det finns redan en användare med den e-mailen");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var employee = new EmployeeEntity
+                {
+                    EmployeeFirstName = dto.FirstName,
+                    EmployeeLastName = dto.LastName,
+                    EmployeeEmail = dto.Email,
+                    EmployeePhone = dto.Phone,
+                    RoleId = dto.RoleId,
+                };
+
+                await _repository.AddEmployeeAsync(employee);
+
+                var user = new ApplicationUser { UserName = dto.Email, Email = dto.Email, EmployeeId = employee.Id };
+
+                var createResult = await _userManager.CreateAsync(user, dto.Password);
+                if (!createResult.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return ServiceResult<EmployeeEntity>.Fail("Kunde inte skapa en användare");
+                }
+                ;
+
+                var roleName = await _repository.GetRoleNameById(dto.RoleId);
+                if (!string.IsNullOrEmpty(roleName))
+                {
+                    await _userManager.AddToRoleAsync(user, roleName);
+                }
+
+                await transaction.CommitAsync();
+                return ServiceResult<EmployeeEntity>.Ok(employee, "Anställd registrerad");
+            }
+            catch (Exception ex) {
+                await transaction.RollbackAsync();
+                var error = ex.InnerException != null
+                    ? $"{ex.Message} (InnerExeption: {ex.InnerException.Message}) " : ex.Message;
+                return ServiceResult<EmployeeEntity>.Fail("Fel vid registrering" + error);
+            }
         }
 
         public async Task<ServiceResult<EmployeeEntity>> UpdateEmployeeAsync(int id, UpdateEmployeeDto dto)
@@ -74,7 +122,7 @@ namespace api_backend.Services
                 employee.RoleId = dto.RoleId.Value;
 
             await _repository.SaveAsync();
-            return ServiceResult<EmployeeEntity>.Ok(employee,"Anställd uppdaterad.");
+            return ServiceResult<EmployeeEntity>.Ok(employee, "Anställd uppdaterad.");
         }
     }
 }

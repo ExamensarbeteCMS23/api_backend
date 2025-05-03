@@ -50,8 +50,9 @@ builder.Services.AddDbContext<DataContext>(options =>
     options.UseSqlServer(connectionString));
 
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<IEmployeeService, EmployeeService>();
-builder.Services.AddScoped<EmployeeRepository>();
+
+// Flyttade alla DI till denna filen istället för att få allt i program
+builder.Services.AddApplicationService();
 
 var app = builder.Build();
 app.UseSwagger();
