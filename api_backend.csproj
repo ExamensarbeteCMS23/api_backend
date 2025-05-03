@@ -24,6 +24,17 @@
 
   <ItemGroup>
     <Folder Include="Database\" />
+    <Folder Include="Repositories\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>
