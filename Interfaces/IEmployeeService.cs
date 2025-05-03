@@ -1,5 +1,6 @@
 ﻿using api_backend.Dtos;
 using api_backend.Models;
+using api_backend.Results;
 
 namespace api_backend.Interfaces
 {
@@ -9,5 +10,6 @@ namespace api_backend.Interfaces
         Task<ServiceResult<EmployeeEntity>> UpdateEmployeeAsync(int id, UpdateEmployeeDto dto);
         Task<IEnumerable<EmployeeEntity>> GetAllAsync();
         Task<EmployeeEntity?> GetByIdAsync(int id);
+        Task<ServiceResult> DeleteAsync(int id);
     }
 }

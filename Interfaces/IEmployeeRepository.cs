@@ -9,7 +9,7 @@ namespace api_backend.Interfaces
         Task UpdateAsync(EmployeeEntity entity);
         Task SaveAsync();
         Task AddEmployeeAsync(EmployeeEntity entity);
-        Task RemoveEmployeeAsync(int id);
+        Task RemoveEmployeeAsync(EmployeeEntity employee);
         Task<string> GetRoleNameById(int id);
     }
 }

@@ -14,7 +14,7 @@ namespace api_backend.Controllers
 
         // Registrera en användare, får bara göras av en Admin
         [HttpPost("RegisterEmployee")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterEmployee([FromBody] RegisterCleanerDto dto)
         {
             if (!ModelState.IsValid)
@@ -63,6 +63,17 @@ namespace api_backend.Controllers
 
             return Ok(new { message = result.Message, updated = result.Data });
 
+        }
+
+        [HttpDelete("RemoveEmployee")]
+        public async Task<IActionResult> DeleteEmployee(int id)
+        {
+            var result = _employeeService.DeleteAsync(id);
+            if (result != null)
+            {
+                return Ok(result);
+            }
+            return BadRequest();
         }
     }
 

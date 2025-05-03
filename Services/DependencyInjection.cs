@@ -8,7 +8,7 @@ namespace api_backend.Services
         public static IServiceCollection AddApplicationService (this IServiceCollection services)
         {
             services.AddScoped<IEmployeeService, EmployeeService>();
-            services.AddScoped<EmployeeRepository>();
+            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
             return services;
         }

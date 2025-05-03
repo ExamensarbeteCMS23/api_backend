@@ -3,6 +3,7 @@ using api_backend.Dtos;
 using api_backend.Interfaces;
 using api_backend.Models;
 using api_backend.Repositories;
+using api_backend.Results;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,28 @@ namespace api_backend.Services
             _repository = repository;
             _userManager = userManager;
             _context = context;
+        }
+
+        public async Task<ServiceResult> DeleteAsync(int id)
+        {
+            var employee = await _repository.GetByIdAsync(id);
+            if (employee == null)
+            {
+                return ServiceResult.Fail("Anställd hittades inte");
+            }
+
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.EmployeeId == id);
+            if (user != null)
+            {
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => e.Description);
+                    return ServiceResult.Fail("Kunde inte ta bort användaren", errors);
+                }
+            }
+            await _repository.RemoveEmployeeAsync(employee);
+            return ServiceResult.Ok("Anställd borttagen");
         }
 
         public async Task<IEnumerable<EmployeeEntity>> GetAllAsync()
@@ -73,7 +96,8 @@ namespace api_backend.Services
                 await transaction.CommitAsync();
                 return ServiceResult<EmployeeEntity>.Ok(employee, "Anställd registrerad");
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 await transaction.RollbackAsync();
                 var error = ex.InnerException != null
                     ? $"{ex.Message} (InnerExeption: {ex.InnerException.Message}) " : ex.Message;
