@@ -8,11 +8,13 @@ namespace api_backend.Repositories
     public class EmployeeRepository : IEmployeeRepository
     {
         private readonly DataContext _context;
+        private readonly ILogger<EmployeeRepository> _logger;
 
-        public EmployeeRepository(DataContext context)
+        public EmployeeRepository(DataContext context, ILogger<EmployeeRepository> logger)
         {
             _context = context;
-        }
+            _logger = logger;
+        }   
 
         public async Task AddEmployeeAsync(EmployeeEntity employee)
         {
@@ -50,6 +52,7 @@ namespace api_backend.Repositories
         public async Task UpdateAsync(EmployeeEntity employee)
         {
             _context.Employees.Update(employee);
+            await _context.SaveChangesAsync();
         }
     }
 }

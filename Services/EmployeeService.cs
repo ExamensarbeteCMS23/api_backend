@@ -11,11 +11,11 @@ namespace api_backend.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly EmployeeRepository _repository;
+        private readonly IEmployeeRepository _repository;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly DataContext _context;
 
-        public EmployeeService(EmployeeRepository repository, UserManager<ApplicationUser> userManager, DataContext context)
+        public EmployeeService(IEmployeeRepository repository, UserManager<ApplicationUser> userManager, DataContext context)
         {
             _repository = repository;
             _userManager = userManager;
