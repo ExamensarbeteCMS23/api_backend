@@ -28,10 +28,26 @@ namespace api_backend.Repositories
             return customer;
         }
 
-        public async Task RegisterCustomer(CustomerEntity customer)
+        public async Task <CustomerEntity?> RegisterCustomerAsync(CustomerEntity customer, CustomerAddressEntity address)
         {
-            await _context.Customers.AddAsync(customer);
-            await _context.SaveChangesAsync();
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                _context.CustomerAddresses.Add(address);
+                await _context.SaveChangesAsync();
+
+                customer.AddressId = address.Id;
+                _context.Customers.Add(customer);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return customer;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                return null;
+            }
         }
 
         public Task UpdateCustomer(CustomerEntity customer)

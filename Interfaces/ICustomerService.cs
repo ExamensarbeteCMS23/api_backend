@@ -1,4 +1,5 @@
-﻿using api_backend.Models;
+﻿using api_backend.Dtos;
+using api_backend.Models;
 using api_backend.Results;
 
 namespace api_backend.Interface
@@ -9,6 +10,6 @@ namespace api_backend.Interface
         Task<ServiceResult<CustomerEntity>> GetCustomer(int id);
         Task<ServiceResult<CustomerEntity>> UpdateCustomerAsync(CustomerEntity customer);
         Task<ServiceResult> RemoveCustomerAsync(int id);
-        Task<ServiceResult<CustomerEntity>> RegisterCustomer (CustomerEntity customer);
+        Task<CustomerDto?> RegisterCustomerAsync (CreateCustomerRequestDto dto);
     }
 }

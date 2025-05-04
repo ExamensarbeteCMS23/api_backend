@@ -4,7 +4,7 @@ namespace api_backend.Interfaces
 {
     public interface ICustomerRepository
     {
-        Task RegisterCustomer(CustomerEntity customer);
+        Task <CustomerEntity?>RegisterCustomerAsync(CustomerEntity customer, CustomerAddressEntity address);
         Task <IEnumerable<CustomerEntity>>GetAllCustomers();
         Task <CustomerEntity>GetCustomerById(int id);
         Task UpdateCustomer(CustomerEntity customer);
