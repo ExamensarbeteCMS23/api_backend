@@ -23,20 +23,19 @@ namespace api_backend.Controllers
         {
             _userManager = userManager;
             _config = config;
-            _context = context;
         }
 
         [HttpPost("Login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
+            // Hämtar eposten från databasen
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null || !await _userManager.CheckPasswordAsync(user, model.Password))
                 return Unauthorized("Fel användare eller lösenord");
 
             var roles = await _userManager.GetRolesAsync(user);
             
-
-
+            // Sätter Claims som kommer in i Token senare
             var authClaims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
@@ -44,14 +43,11 @@ namespace api_backend.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
             };
 
+            // Lägger till roller i Claims
             foreach (var role in roles) {
                 authClaims.Add(new Claim(ClaimTypes.Role, role));
             }
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["authToken:Key"]));
-
-            Console.WriteLine("LOGIN: Issuer = " + "testissuer");
-            Console.WriteLine("LOGIN: Audience = " + "testaudience");
-            Console.WriteLine("LOGIN: Key = " + _config["authToken:Key"]);
 
             var token = new JwtSecurityToken(
                 issuer: "testissuer",
@@ -61,6 +57,7 @@ namespace api_backend.Controllers
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
 
+            // Detta är den som kommer vara token framöver
             string tokenString;
             try
             {
@@ -78,84 +75,8 @@ namespace api_backend.Controllers
             return Ok(new
             {
                 token = tokenString,
-                expiration = token.ValidTo,
-                role = roles,
+                expiration = token.ValidTo, // Denna skulle man kunna ta bort i ett senare skede
             });
-        }
-
-        [HttpPost("RegisterEmployee")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RegisterEmployee([FromBody] RegisterCleanerDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            // Kontrollera om email redan finns
-            var existingUser = await _userManager.FindByEmailAsync(dto.Email);
-            if (existingUser != null)
-                return BadRequest("Användare med den emailen finns redan.");
-
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                // 1. Skapa CleanerEntity
-                var employee = new EmployeeEntity
-                {
-                    EmployeeFirstName = dto.FirstName,
-                    EmployeeLastName = dto.LastName,
-                    EmployeeEmail = dto.Email,
-                    EmployeePhone = dto.Phone,
-                    RoleId = dto.RoleId
-                };
-
-                _context.Employees.Add(employee);
-
-                // Spara Cleaner
-                await _context.SaveChangesAsync();
-
-                // 2. Skapa ApplicationUser kopplat till CleanerEntity
-                var user = new ApplicationUser
-                {
-                    UserName = dto.Email,
-                    Email = dto.Email,
-                    EmployeeId = employee.Id
-                };
-
-                var result = await _userManager.CreateAsync(user, dto.Password);
-
-                if (!result.Succeeded)
-                {
-                    await transaction.RollbackAsync();
-                    var errorMessages = result.Errors.Select(e => e.Description);
-                    return BadRequest(new { message = "Kunde inte skapa användare", errors = errorMessages });
-                }
-
-                var roleName = await _context.Roles
-                    .Where(r => r.Id == dto.RoleId)
-                    .Select(r => r.Role)
-                    .FirstOrDefaultAsync();
-
-                if (!string.IsNullOrEmpty(roleName))
-                {
-                    await _userManager.AddToRoleAsync(user, roleName);
-                }
-
-                await transaction.CommitAsync();
-                return Ok(new { Message = "Anställd registrerad och inloggningsbar!", CleanerId = employee.Id });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                var errorMessage = ex.Message;
-
-                if (ex.InnerException != null)
-                {
-                    errorMessage += " InnerException: " + ex.InnerException.Message;
-                }
-
-                return StatusCode(500, "Internt fel vid registrering: " + errorMessage);
-            }
-
         }
     }
 }

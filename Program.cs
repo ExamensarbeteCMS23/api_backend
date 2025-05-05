@@ -1,12 +1,14 @@
 using api_backend.Contexts;
+using api_backend.Interfaces;
 using api_backend.Models;
+using api_backend.Repositories;
+using api_backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,11 +36,6 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-Console.WriteLine("VALIDATION: Issuer = " + builder.Configuration["authToken:Issuer"]);
-Console.WriteLine("VALIDATION: Audience = " + builder.Configuration["authToken:Audience"]);
-Console.WriteLine("VALIDATION: Key = " + builder.Configuration["authToken:Key"]);
-
-
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -54,19 +51,15 @@ builder.Services.AddDbContext<DataContext>(options =>
 
 builder.Services.AddAuthorization();
 
+// Flyttade alla DI till denna filen istället för att få allt i program
+builder.Services.AddApplicationService();
+
 var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
-
 app.UseHttpsRedirection();
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
-
-
 app.Run();
