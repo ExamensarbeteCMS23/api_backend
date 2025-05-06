@@ -1,4 +1,4 @@
-﻿namespace api_backend.Interface
+﻿namespace api_backend.Interfaces
 {
     public interface ICustomerService
     {
