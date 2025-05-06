@@ -7,9 +7,10 @@ namespace api_backend.Interface
     public interface ICustomerService
     {
         Task<IEnumerable<CustomerEntity>> GetAllCustomersAsync();
-        Task<ServiceResult<CustomerEntity>> GetCustomer(int id);
-        Task<ServiceResult<CustomerEntity>> UpdateCustomerAsync(CustomerEntity customer);
+        Task<ServiceResult<CustomerDto>> GetCustomerAsync(int id);
+       
+        Task<ServiceResult<UpdateCustomerDto?>> UpdateCustomerAsync(int id, UpdateCustomerDto dto);
         Task<ServiceResult> RemoveCustomerAsync(int id);
-        Task<CustomerDto?> RegisterCustomerAsync (CreateCustomerRequestDto dto);
+        Task<ServiceResult<CustomerDto?>> RegisterCustomerAsync (CreateCustomerRequestDto dto);
     }
 }

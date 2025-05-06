@@ -1,7 +1,6 @@
 ﻿using api_backend.Contexts;
 using api_backend.Interfaces;
 using api_backend.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace api_backend.Repositories
@@ -10,25 +9,27 @@ namespace api_backend.Repositories
     {
         private readonly DataContext _context = context;
 
-        public Task DeleteCustomer(int id)
+        public async Task<bool> DeleteCustomerAsync(CustomerEntity customer)
         {
-            throw new NotImplementedException();
+            _context.Customers.Remove(customer);
+            var result = await _context.SaveChangesAsync();
+            return result > 0;
         }
 
-        public async Task<IEnumerable<CustomerEntity>> GetAllCustomers() =>       
+        public async Task<IEnumerable<CustomerEntity>> GetAllCustomers() =>
             await _context.Customers.ToListAsync();
 
         public async Task<CustomerEntity> GetCustomerById(int id)
         {
-            var customer = await _context.Customers.FirstOrDefaultAsync(x => x.Id == id);
-            if (customer == null)
-            {
-                return null!;
-            }
-            return customer;
+            return await _context.Customers.FirstOrDefaultAsync(c => c.Id == id);
         }
 
-        public async Task <CustomerEntity?> RegisterCustomerAsync(CustomerEntity customer, CustomerAddressEntity address)
+        public async Task<CustomerAddressEntity> GetCustomerAddressById(int id)
+        {
+            return await _context.CustomerAddresses.FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<CustomerEntity?> RegisterCustomerAsync(CustomerEntity customer, CustomerAddressEntity address)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
@@ -50,9 +51,20 @@ namespace api_backend.Repositories
             }
         }
 
-        public Task UpdateCustomer(CustomerEntity customer)
+        public async Task UpdateCustomer(CustomerEntity customer)
         {
-            throw new NotImplementedException();
+            _context.Customers.Update(customer);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<bool> GetCustomerByEmail(string email)
+        {
+            return await _context.Customers.AnyAsync(c => c.CustomerEmail == email);
+        }
+
+        public async Task SaveCustomerAsync()
+        {
+            await _context.SaveChangesAsync();
         }
     }
 }

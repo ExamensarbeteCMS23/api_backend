@@ -11,7 +11,7 @@ namespace api_backend.Mappings
             CreateMap<CreateCustomerRequestDto, CustomerAddressEntity>();
             CreateMap<CreateCustomerRequestDto, CustomerEntity>()
                 .ForMember(dest => dest.AddressId, opt => opt.Ignore());
-          
+
             CreateMap<CustomerEntity, CustomerDto>();
         }
     }

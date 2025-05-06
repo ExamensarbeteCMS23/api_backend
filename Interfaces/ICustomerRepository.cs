@@ -7,8 +7,12 @@ namespace api_backend.Interfaces
         Task <CustomerEntity?>RegisterCustomerAsync(CustomerEntity customer, CustomerAddressEntity address);
         Task <IEnumerable<CustomerEntity>>GetAllCustomers();
         Task <CustomerEntity>GetCustomerById(int id);
+        Task <CustomerAddressEntity>GetCustomerAddressById(int id);
+        Task <bool>GetCustomerByEmail(string email);
         Task UpdateCustomer(CustomerEntity customer);
-        Task DeleteCustomer(int id);
+        Task<bool> DeleteCustomerAsync(CustomerEntity customer);
+
+        Task SaveCustomerAsync();
 
     }
 }
