@@ -110,7 +110,7 @@ namespace api_backend.Services
             // Hämta ut den anställda från databasen
             var employee = await _repository.GetByIdAsync(id);
             if (employee == null)
-                return ServiceResult<EmployeeEntity>.Fail($"Anställd med anställningsnummer {id} ");
+                return ServiceResult<EmployeeEntity>.Fail($"Anställd med anställningsnummer {id} finns ite ");
 
             // Hämta Användaren om den finns i Identity
             var use = await _userManager.Users.FirstOrDefaultAsync(u => u.EmployeeId == employee.Id);
