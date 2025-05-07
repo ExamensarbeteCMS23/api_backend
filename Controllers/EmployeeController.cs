@@ -41,7 +41,7 @@ namespace api_backend.Controllers
             return Ok(employees);
         }
 
-        [HttpGet("GetEmployeeById")]
+        [HttpGet("GetEmployeeById{id}")]
         public async Task<IActionResult> GetEmployeeById(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
@@ -65,7 +65,7 @@ namespace api_backend.Controllers
 
         }
 
-        [HttpDelete("RemoveEmployee")]
+        [HttpDelete("RemoveEmployee{id}")]
         public async Task<IActionResult> DeleteEmployee(int id)
         {
             var result = await _employeeService.DeleteAsync(id);

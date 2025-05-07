@@ -10,6 +10,16 @@ namespace api_backend.Controllers
     {
         private readonly ICustomerService _customerService = customerService;
 
+        [HttpPost("RegisterCustomer")]
+        public async Task<IActionResult> RegisterCustomer([FromBody] CreateCustomerRequestDto dto)
+        {
+            var result = await _customerService.RegisterCustomerAsync(dto);
+            if (result == null)
+                return StatusCode(500, "Kunde inte skapa kunden");
+
+            return Ok(result);
+        }
+
         [HttpGet("GetAllCustomers")]
         public async Task<IActionResult> GetAllCustomers()
         {
@@ -21,7 +31,7 @@ namespace api_backend.Controllers
             return Ok(customers);
         }
 
-        [HttpGet("GetCustomerById")]
+        [HttpGet("GetCustomerById{id}")]
         public async Task<IActionResult> GetCustomerAsync(int id)
         {
             var customer = await _customerService.GetCustomerAsync(id);
@@ -32,17 +42,7 @@ namespace api_backend.Controllers
             return Ok(customer);
         }
 
-        [HttpPost("RegisterCustomer")]
-        public async Task<IActionResult> RegisterCustomer([FromBody] CreateCustomerRequestDto dto)
-        {
-            var result = await _customerService.RegisterCustomerAsync(dto);
-            if (result == null)
-                return StatusCode(500, "Kunde inte skapa kunden");
-
-            return Ok(result);
-        }
-
-        [HttpDelete("DeleteCustomer")]
+        [HttpDelete("DeleteCustomer{id}")]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
             var result = await _customerService.RemoveCustomerAsync(id);
@@ -51,7 +51,7 @@ namespace api_backend.Controllers
             return Ok(result.Message);
         }
 
-        [HttpPut("UpdateCustomer")]
+        [HttpPut("UpdateCustomer{id}")]
         public async Task<IActionResult> UpdateCustomer(int id, [FromBody] UpdateCustomerDto dto)
         {
             var result = await _customerService.UpdateCustomerAsync(id, dto);
