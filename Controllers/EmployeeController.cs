@@ -14,7 +14,7 @@ namespace api_backend.Controllers
 
         // Registrera en användare, får bara göras av en Admin
         [HttpPost("RegisterEmployee")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterEmployee([FromBody] RegisterCleanerDto dto)
         {
             if (!ModelState.IsValid)
@@ -30,6 +30,7 @@ namespace api_backend.Controllers
 
         // Hämtar alla anställda, enbart tillåtet för en Admin
         [HttpGet("GetAllEmployee")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllEmployees()
         {
             var employees = await _employeeService.GetAllAsync();
@@ -42,6 +43,7 @@ namespace api_backend.Controllers
         }
 
         [HttpGet("GetEmployeeById{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetEmployeeById(int id)
         {
             var employee = await _employeeService.GetByIdAsync(id);
@@ -49,6 +51,7 @@ namespace api_backend.Controllers
         }
 
         [HttpPut("UpdateEmployee/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateEmployee(int id, [FromBody] UpdateEmployeeDto dto)
         {
             var result = await _employeeService.UpdateEmployeeAsync(id, dto);
@@ -66,6 +69,7 @@ namespace api_backend.Controllers
         }
 
         [HttpDelete("RemoveEmployee{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteEmployee(int id)
         {
             var result = await _employeeService.DeleteAsync(id);

@@ -1,5 +1,7 @@
 ﻿using api_backend.Dtos;
 using api_backend.Interface;
+using api_backend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace api_backend.Controllers
@@ -11,6 +13,7 @@ namespace api_backend.Controllers
         private readonly ICustomerService _customerService = customerService;
 
         [HttpPost("RegisterCustomer")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterCustomer([FromBody] CreateCustomerRequestDto dto)
         {
             var result = await _customerService.RegisterCustomerAsync(dto);
@@ -21,6 +24,7 @@ namespace api_backend.Controllers
         }
 
         [HttpGet("GetAllCustomers")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllCustomers()
         {
             var customers = await _customerService.GetAllCustomersAsync();
@@ -32,6 +36,7 @@ namespace api_backend.Controllers
         }
 
         [HttpGet("GetCustomerById{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCustomerAsync(int id)
         {
             var customer = await _customerService.GetCustomerAsync(id);
@@ -43,6 +48,7 @@ namespace api_backend.Controllers
         }
 
         [HttpDelete("DeleteCustomer{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
             var result = await _customerService.RemoveCustomerAsync(id);
@@ -52,6 +58,7 @@ namespace api_backend.Controllers
         }
 
         [HttpPut("UpdateCustomer{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateCustomer(int id, [FromBody] UpdateCustomerDto dto)
         {
             var result = await _customerService.UpdateCustomerAsync(id, dto);
