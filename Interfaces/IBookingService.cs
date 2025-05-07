@@ -11,5 +11,6 @@ public interface IBookingService
     Task<bool> UpdateBookingAsync(int id, BookingUpdateDto bookingDto);
     Task<IEnumerable<object>> GetCustomerBookingsAsync(int customerId);
     Task<IEnumerable<object>> GetCleanerBookingsAsync(int cleanerId);
+    Task<IEnumerable<object>> GetMyBookingsAsync(int employeeId);
 
 }
