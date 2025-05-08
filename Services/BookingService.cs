@@ -275,6 +275,42 @@ namespace api_backend.Services
                 throw;
             }
         }
+        public async Task<IEnumerable<object>> GetMyBookingsAsync(int employeeId)
+        {
+            try
+            {
+                _logger.LogInformation("Service: GetMyBookingsAsync startar för anställd {EmployeeId}", employeeId);
+
+                var cleanerExists = await _bookingRepository.CleanerExistsAsync(employeeId);
+                if (!cleanerExists)
+                {
+                    throw new NotFoundException($"Cleaner with ID {employeeId} not found");
+                }
+
+                var bookings = await _bookingRepository.GetByCleanerIdWithCustomerAndAddressAsync(employeeId);
+
+                // Hämta kundens information utan att använda Address-egenskapen
+                var formattedBookings = bookings.Select(b => new
+                {
+                    Id = b.Id,
+                    Date = b.Date.ToString("yyyy-MM-dd"),
+                    Time = b.Time.ToString(),
+                    Customer = new
+                    {
+                        Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",
+                        // Vi undviker att använda b.Customer.Address här
+                    }
+                });
+
+                _logger.LogInformation("Retrieved {Count} bookings for cleaner {CleanerId}", bookings.Count(), employeeId);
+                return formattedBookings;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving bookings for cleaner {CleanerId}", employeeId);
+                throw;
+            }
+        }
     }
 
     // Custom exception classes
