@@ -30,7 +30,7 @@ namespace api_backend.Controllers
 
         // Hämtar alla anställda, enbart tillåtet för en Admin
         [HttpGet("GetAllEmployee")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> GetAllEmployees()
         {
             var employees = await _employeeService.GetAllAsync();
