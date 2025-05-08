@@ -16,6 +16,7 @@ namespace api_backend.Services
             services.AddAutoMapper(typeof(MappingProfile));
             services.AddScoped<IBookingRepository, BookingRepository>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IAuthService, AuthService>();
 
             return services;
         }

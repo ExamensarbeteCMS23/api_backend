@@ -14,7 +14,7 @@ namespace api_backend.Controllers
 
         // Registrera en användare, får bara göras av en Admin
         [HttpPost("RegisterEmployee")]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RegisterEmployee([FromBody] RegisterCleanerDto dto)
         {
             if (!ModelState.IsValid)
@@ -30,6 +30,7 @@ namespace api_backend.Controllers
 
         // Hämtar alla anställda, enbart tillåtet för en Admin
         [HttpGet("GetAllEmployee")]
+        [Authorize(Roles ="Admin")]
         public async Task<IActionResult> GetAllEmployees()
         {
             var employees = await _employeeService.GetAllAsync();
