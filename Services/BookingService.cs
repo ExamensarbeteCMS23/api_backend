@@ -1,4 +1,5 @@
 ﻿using api_backend.Dtos;
+using api_backend.Interface;
 using api_backend.Interfaces;
 using api_backend.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -10,11 +11,13 @@ namespace api_backend.Services
     {
         private readonly IBookingRepository _bookingRepository;
         private readonly ILogger<BookingService> _logger;
-
-        public BookingService(IBookingRepository bookingRepository, ILogger<BookingService> logger)
+        private readonly ICustomerService _customerService;
+        
+        public BookingService(IBookingRepository bookingRepository, ILogger<BookingService> logger, ICustomerService customerService)
         {
             _bookingRepository = bookingRepository;
             _logger = logger;
+            _customerService = customerService;
         }
 
         public async Task<IEnumerable<object>> GetAllBookingsAsync()
@@ -288,8 +291,8 @@ namespace api_backend.Services
                 }
 
                 var bookings = await _bookingRepository.GetByCleanerIdWithCustomerAndAddressAsync(employeeId);
-
-                // Hämta kundens information utan att använda Address-egenskapen
+                
+                // Hämtar info om kunden med adress
                 var formattedBookings = bookings.Select(b => new
                 {
                     Id = b.Id,
@@ -297,8 +300,13 @@ namespace api_backend.Services
                     Time = b.Time.ToString(),
                     Customer = new
                     {
-                        Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",
-                        // Vi undviker att använda b.Customer.Address här
+                        Name = $"{b.Customer.CustomerFirstName} {b.Customer.CustomerLastName}",  
+                        Address = new
+                        {
+                            street = b.Customer.CustomerAddress.CustomerStreetName,
+                            postalCode = b.Customer.CustomerAddress.CustomerPostalCode,
+                            city = b.Customer.CustomerAddress.CustomerCity
+                        }
                     }
                 });
 
