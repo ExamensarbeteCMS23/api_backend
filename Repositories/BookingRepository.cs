@@ -69,6 +69,7 @@ namespace api_backend.Repositories
 
             return await _context.Bookings
                 .Include(b => b.Customer)
+                .ThenInclude(c => c.CustomerAddress)
                 .Where(b => bookingIds.Contains(b.Id))
                 .ToListAsync();
         }

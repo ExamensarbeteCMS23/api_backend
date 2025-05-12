@@ -36,8 +36,9 @@ namespace api_backend.Contexts
             // CustomerAddress -> Customers
             modelBuilder.Entity<CustomerAddressEntity>()
                 .HasMany(ca => ca.Customers)
-                .WithOne()
-                .HasForeignKey(c => c.AddressId);
+                .WithOne(c => c.CustomerAddress)
+                .HasForeignKey(c => c.AddressId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Role -> Cleaners
             modelBuilder.Entity<RoleEntity>()

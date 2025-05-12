@@ -14,4 +14,7 @@ public class CustomerEntity
     [Required]
     public string CustomerEmail { get; set; } = null!;
     public int AddressId { get; set; }
+
+    [ForeignKey(nameof(AddressId))]
+    public CustomerAddressEntity CustomerAddress { get; set; }= null!;
 }
