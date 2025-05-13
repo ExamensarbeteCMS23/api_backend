@@ -8,7 +8,7 @@ namespace api_backend.Interfaces
         Task <IEnumerable<CustomerEntity>>GetAllCustomers();
         Task <CustomerEntity>GetCustomerById(int id);
         Task <CustomerAddressEntity>GetCustomerAddressById(int id);
-        Task <bool>GetCustomerByEmail(string email);
+        Task <bool> CustomerExistByEmail(string email);
         Task UpdateCustomer(CustomerEntity customer);
         Task<bool> DeleteCustomerAsync(CustomerEntity customer);
 

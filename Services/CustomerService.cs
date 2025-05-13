@@ -19,11 +19,7 @@ namespace api_backend.Services
         public async Task<IEnumerable<CustomerEntity>> GetAllCustomersAsync()
         {
             var result = await _customerRepository.GetAllCustomers();
-            if (result != null)
-            {
-                return result;
-            }
-            return null!;
+            return result ?? Enumerable.Empty<CustomerEntity>();
         }
 
         public async Task<ServiceResult<CustomerDto?>> GetCustomerAsync(int id)
@@ -31,12 +27,12 @@ namespace api_backend.Services
             var customer = await _customerRepository.GetCustomerById(id);
             if (customer == null)
             {
-                return ServiceResult<CustomerDto>.Fail("Kunde inte hitta kunden");
+                return ServiceResult<CustomerDto>.Fail("Kund saknas");
             }
             var address = await _customerRepository.GetCustomerAddressById(customer.Id);
             if (address == null)
             {
-                return ServiceResult<CustomerDto>.Fail("Kunde inte hitta kunden");
+                return ServiceResult<CustomerDto>.Fail("Address saknas");
             }
             var customerDto = new CustomerDto
             {
@@ -55,7 +51,7 @@ namespace api_backend.Services
 
         public async Task<ServiceResult<CustomerDto?>> RegisterCustomerAsync(CreateCustomerRequestDto dto)
         {
-            var customerInDb = await _customerRepository.GetCustomerByEmail(dto.CustomerEmail);
+            var customerInDb = await _customerRepository.CustomerExistByEmail(dto.CustomerEmail);
 
             if (!customerInDb)
             {
@@ -85,6 +81,12 @@ namespace api_backend.Services
         public async Task<ServiceResult> RemoveCustomerAsync(int id)
         {
             var customer = await _customerRepository.GetCustomerById(id);
+
+            if (customer == null)
+            {
+                return ServiceResult.Fail("Kunden kunde inte hittas");
+            }
+
             var result = await _customerRepository.DeleteCustomerAsync(customer);
             if (!result)
                 return ServiceResult.Fail("Kunden finns inte i databasen");
@@ -107,7 +109,7 @@ namespace api_backend.Services
 
             if (!string.IsNullOrEmpty(dto.CustomerEmail))
             {
-                if (await _customerRepository.GetCustomerByEmail(dto.CustomerEmail))
+                if (await _customerRepository.CustomerExistByEmail(dto.CustomerEmail))
                 {
                     return ServiceResult<UpdateCustomerDto>.Fail("Användare med den eposten finns redan");
                 }
