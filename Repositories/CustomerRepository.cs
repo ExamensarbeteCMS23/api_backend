@@ -57,7 +57,7 @@ namespace api_backend.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<bool> GetCustomerByEmail(string email)
+        public async Task<bool> CustomerExistByEmail(string email)
         {
             return await _context.Customers.AnyAsync(c => c.CustomerEmail == email);
         }
